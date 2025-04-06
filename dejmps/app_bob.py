@@ -4,15 +4,6 @@ from dejmps import dejmps_protocol_bob
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
 
-# def bell_state():
-#     ket_0 = [[1], [0]]
-#     ket_1 = [[0], [1]]
-
-#     def ketbra(ket, bra):
-#         return np.outer(ket, bra)
-    
-#     return (ketbra(ket_0, np.transpose(ket_0)) + ketbra(ket_1, np.transpose(ket_1))) / 2
-
 def bell_state():
     ket_0 = [[1.+0.j], [0.j]]
     ket_1 = [[0.j], [1.+0.j]]
@@ -41,20 +32,14 @@ def main(app_config=None):
     with bob:
         epr_1, epr_2 = epr_socket.recv(number=2)
 
-        # dens_in = get_qubit_state(epr_1, reduced_dm=False)
-
-        # f_in = fidelity(phi_00, dens_in)
-
         succ = dejmps_protocol_bob(epr_1, epr_2, bob, socket)
 
         dens_out = get_qubit_state(epr_1, reduced_dm=False)
 
-        
         f_out = fidelity(phi_00, dens_out)
     
     if succ:    
         print("Bob succeeded :-)")
-        # print("The fidelity of the final state is:", f_in)
         print("The fidelity of the final state is:", f_out)
     else:
         print("Bob did not succceed ;-(")
