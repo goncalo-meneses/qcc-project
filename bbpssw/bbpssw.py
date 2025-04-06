@@ -1,4 +1,3 @@
-import math
 from netqasm.sdk.classical_communication.message import StructuredMessage
 
 def bbpssw_protocol_alice(q1, q2, alice, socket):
@@ -17,16 +16,11 @@ def bbpssw_protocol_alice(q1, q2, alice, socket):
     a = bbpssw_gates_and_measurement_alice(q1, q2)
     alice.flush()
 
-    # Write below the code to send measurement result to Bob, receive measurement result from Bob and check if protocol was successful
-
-    # Send measurement result to Bob
     ma = int(a)
     socket.send_structured(StructuredMessage("m_a: ", ma))
 
-    # Receive measurement result from Bob
-    mb = socket.rcv_structured().payload
+    mb = socket.recv_structured().payload
 
-    # Check if success (ma=mb)
     success = False
     if ma == mb:
         success = True
@@ -62,16 +56,11 @@ def bbpssw_protocol_bob(q1, q2, bob, socket):
     b = bbpssw_gates_and_measurement_bob(q1, q2)
     bob.flush()
 
-    # Write below the code to send measurement result to Alice, receive measurement result from Alice and check if protocol was successful
-
-    # Send measurement result to Alice
     mb = int(b)
     socket.send_structured(StructuredMessage("m_b: ", mb))
 
-    # Receive measurement result from Alice
-    ma = socket.rcv_structured().payload
+    ma = socket.recv_structured().payload
 
-    # Check if success (ma=mb)
     success = False
     if ma == mb:
         success = True
