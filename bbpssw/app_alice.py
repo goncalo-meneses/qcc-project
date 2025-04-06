@@ -4,21 +4,21 @@ from netqasm.sdk.external import NetQASMConnection, Socket
 
 def main(app_config=None):
 
-    socket = Socket("alice", "bob")
+    socket = Socket("alice", "bob", log_config=app_config.log_config)
 
     epr_socket = EPRSocket("bob")
 
-    alice = NetQASMConnection(
-        app_name = app_config.app_name,
-        epr_sockets = [epr_socket]
-    )
+    alice = NetQASMConnection("alice", log_config=app_config.log_config, epr_sockets=[epr_socket])
 
     with alice:
         epr1, epr2 = epr_socket.create(number=2)
 
-        alice_method = bbpssw_protocol_alice(epr1, epr2, alice, socket)
+        succ = bbpssw_protocol_alice(epr1, epr2, alice, socket)
 
-    print(alice_method)
+    if succ:
+        print("Alice succeeded :-)")
+    else:
+        print("Alice did not succceed ;-(")
 
 if __name__ == "__main__":
     main()

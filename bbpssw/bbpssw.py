@@ -1,5 +1,3 @@
-from netqasm.sdk.classical_communication.message import StructuredMessage
-
 def bbpssw_protocol_alice(q1, q2, alice, socket):
     """
     Implements Alice's side of the BBPSSW distillation protocol.
@@ -16,16 +14,10 @@ def bbpssw_protocol_alice(q1, q2, alice, socket):
     a = bbpssw_gates_and_measurement_alice(q1, q2)
     alice.flush()
 
-    ma = int(a)
-    socket.send_structured(StructuredMessage("m_a: ", ma))
+    socket.send(str(a))
+    b = int(socket.recv())
 
-    mb = socket.recv_structured().payload
-
-    success = False
-    if ma == mb:
-        success = True
-
-    return success
+    return True if a == b else False
 
 
 def bbpssw_gates_and_measurement_alice(q1, q2):
@@ -56,16 +48,10 @@ def bbpssw_protocol_bob(q1, q2, bob, socket):
     b = bbpssw_gates_and_measurement_bob(q1, q2)
     bob.flush()
 
-    mb = int(b)
-    socket.send_structured(StructuredMessage("m_b: ", mb))
+    socket.send(str(b))
+    a = int(socket.recv())
 
-    ma = socket.recv_structured().payload
-
-    success = False
-    if ma == mb:
-        success = True
-
-    return success
+    return True if a == b else False
 
 def bbpssw_gates_and_measurement_bob(q1, q2):
     """
@@ -75,7 +61,6 @@ def bbpssw_gates_and_measurement_bob(q1, q2):
     :return: Integer 0/1 indicating Bob's measurement outcome
     """
     q1.cnot(q2)
-    q2.H()
     b = q2.measure()
 
     return b

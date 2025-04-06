@@ -23,7 +23,7 @@ def fidelity(state, dm):
 def main(app_config=None):
     socket = Socket("bob", "alice", log_config=app_config.log_config)
 
-    epr_socket = EPRSocket("alice", min_fidelity=0)
+    epr_socket = EPRSocket("alice")
 
     bob = NetQASMConnection("bob", log_config=app_config.log_config, epr_sockets=[epr_socket])
 
