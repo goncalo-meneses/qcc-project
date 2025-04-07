@@ -17,8 +17,10 @@ def epl_protocol_alice(q1, q2, alice, socket):
     a = epl_gates_and_measurement_alice(q1, q2)
     alice.flush()
 
-    # Write below the code to send measurement result to Bob, receive measurement result from Bob and check if protocol was successful
-    pass
+    socket.send(str(a))
+    b = int(socket.recv())
+
+    return True if (a, b) == (1, 1) else False
 
 
 def epl_gates_and_measurement_alice(q1, q2):
@@ -28,7 +30,9 @@ def epl_gates_and_measurement_alice(q1, q2):
     :param q2: Alice's qubit from the second entangled pair
     :return: Integer 0/1 indicating Alice's measurement outcome
     """
-    pass
+    q1.cnot(q2)
+    a = q2.measure()
+    return a
 
 
 def epl_protocol_bob(q1, q2, bob, socket):
@@ -47,8 +51,10 @@ def epl_protocol_bob(q1, q2, bob, socket):
     b = epl_gates_and_measurement_bob(q1, q2)
     bob.flush()
 
-    # Write below the code to send measurement result to Alice, receive measurement result from Alice and check if protocol was successful
-    pass
+    socket.send(str(b))
+    a = int(socket.recv())
+
+    return True if (a, b) == (1, 1) else False
 
 def epl_gates_and_measurement_bob(q1, q2):
     """
@@ -57,4 +63,6 @@ def epl_gates_and_measurement_bob(q1, q2):
     :param q2: Bob's qubit from the second entangled pair
     :return: Integer 0/1 indicating Bob's measurement outcome
     """
-    pass
+    q1.cnot(q2)
+    b = q2.measure()
+    return b
