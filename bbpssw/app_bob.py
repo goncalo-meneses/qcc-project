@@ -1,23 +1,19 @@
 import numpy as np
+import os
+import yaml
 
 from bbpssw import bbpssw_protocol_bob
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
 
-def bell_state():
-    ket_0 = [[1.+0.j], [0.j]]
-    ket_1 = [[0.j], [1.+0.j]]
-    
-    ket_00 = np.kron(ket_0, ket_0)
-    ket_11 = np.kron(ket_1, ket_1)
+def read_simulation_parameters(yaml_path="network.yaml"):
+    with open(yaml_path, "r") as f:
+        config = yaml.safe_load(f)
 
-    return (ket_00 + ket_11) / np.sqrt(2)
+    fidelity = config["links"][0]["fidelity"]
+    gate_fidelity = config["nodes"][0]["gate_fidelity"]  # assumes gate fidelity is the same for alice and bob
 
-def fidelity(state, dm):
-    state = state.reshape(-1, 1)
-    bra = state.conj().T
-    result = np.dot(bra, np.dot(dm, state))
-    return np.real_if_close(result.item())
+    return fidelity, gate_fidelity
 
 def main(app_config=None):
 
@@ -27,8 +23,6 @@ def main(app_config=None):
 
     bob = NetQASMConnection("bob", log_config=app_config.log_config, epr_sockets=[epr_socket])
 
-    phi_00 = bell_state()
-
     with bob:
         epr1, epr2 = epr_socket.recv(number=2)
 
@@ -36,13 +30,29 @@ def main(app_config=None):
 
         dens_out = get_qubit_state(epr1, reduced_dm=False)
 
-        f_out = fidelity(phi_00, dens_out)
+    fidelity, gate_fidelity = read_simulation_parameters()
 
-    if succ:    
-        print("Bob succeeded :-)")
-        print("The fidelity of the final state is:", f_out)
+    FILENAME = f'./data/f={fidelity}_g={gate_fidelity}_dejmps.npz'
+
+    if os.path.exists(FILENAME):
+        # Load existing
+        data = np.load(FILENAME, allow_pickle=False)
+        matrices = data["matrices"]
+        matrices = np.concatenate((matrices, [dens_out]), axis=0)
+        successes = data["successes"]
+        successes = np.concatenate((successes, [succ]), axis=0)
     else:
-        print("Bob did not succceed ;-(")
+        # Start new array
+        matrices = np.array([dens_out])
+        successes = np.array([succ])
+
+    np.savez(FILENAME,
+             matrices=matrices,
+             successes=successes,
+             protocol='dejmps',
+             fidelity=fidelity,
+             gate_fidelity=gate_fidelity, )
+
 
 if __name__ == "__main__":
     main()
