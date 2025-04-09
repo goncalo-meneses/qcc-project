@@ -15,10 +15,5 @@ def main(app_config=None):
 
         succ = bbpssw_protocol_alice(epr1, epr2, alice, socket)
 
-    if succ:
-        print("Alice succeeded :-)")
-    else:
-        print("Alice did not succceed ;-(")
-
 if __name__ == "__main__":
     main()
