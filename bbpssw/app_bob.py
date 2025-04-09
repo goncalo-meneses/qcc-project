@@ -32,7 +32,7 @@ def main(app_config=None):
 
     fidelity, gate_fidelity = read_simulation_parameters()
 
-    FILENAME = f'./data/f={fidelity}_g={gate_fidelity}_dejmps.npz'
+    FILENAME = f'./data/f={fidelity}_g={gate_fidelity}_bbpssw.npz'
 
     if os.path.exists(FILENAME):
         # Load existing
@@ -49,7 +49,7 @@ def main(app_config=None):
     np.savez(FILENAME,
              matrices=matrices,
              successes=successes,
-             protocol='dejmps',
+             protocol='bbpssw',
              fidelity=fidelity,
              gate_fidelity=gate_fidelity, )
 
