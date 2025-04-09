@@ -6,7 +6,7 @@ network_yaml_path = "network.yaml"
 num_runs_per_sim = 100
 
 # Arrays to sweep through
-fidelity_values = [0.9, 0.99, 0.999, 1]
+fidelity_values = [0.8, 0.85, 0.9, 0.99, 0.999, 1]
 gate_fidelity_values = [0.9, 0.99, 0.999, 1]
 
 # Helper function to update network.yaml
