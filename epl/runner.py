@@ -7,9 +7,8 @@ network_yaml_path = "network.yaml"
 num_runs_per_sim = 500
 
 # Arrays to sweep through
-fidelity_values = [0.9]
-# weird casting thing i have to do to make this work with yaml
-gate_fidelity_values = [float(x) for x in np.linspace(0.7, 1, 21)]
+fidelity_values = [0.45, 0.46, 0.47, 0.48, 0.49, 0.5, 0.51, 0.52, 0.53, 0.54, 0.55]
+gate_fidelity_values = [1]
 
 # Helper function to update network.yaml
 def update_network_yaml(fidelity, gate_fidelity):
