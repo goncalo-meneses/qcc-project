@@ -4,11 +4,13 @@ import numpy as np
 
 
 network_yaml_path = "network.yaml"
-num_runs_per_sim = 500
+num_runs_per_sim = 100
 
 # Arrays to sweep through
-fidelity_values = [0.45, 0.46, 0.47, 0.48, 0.49, 0.5, 0.51, 0.52, 0.53, 0.54, 0.55]
-gate_fidelity_values = [1]
+fidelity_values = [0.7]
+gate_fidelity_values = [0.99  , 0.9905, 0.991 , 0.9915, 0.992 , 0.9925, 0.993 , 0.9935,
+       0.994 , 0.9945, 0.995 , 0.9955, 0.996 , 0.9965, 0.997 , 0.9975,
+       0.998 , 0.9985, 0.999 , 0.9995, 1.    ]
 
 # Helper function to update network.yaml
 def update_network_yaml(fidelity, gate_fidelity):
