@@ -20,40 +20,75 @@ def protocol_string_from_dict(dict):
     return protocol_string(protocol)
 
 
-def plot_1d_analysis(results, sweep_param='fidelity', title=None):
-    assert sweep_param in ('fidelity', 'gate_fidelity'), "sweep_param must be 'fidelity' or 'gate_fidelity'"
-    
-    # todo: crash if given results aren't 1d
-    # also automatically choose sweep parameter -- shouldnt have to specify it manually since only one should be more than length 1
+# Given a result dict, tries to extract 1D data. This means that the input must have multiple values for either fidelity or gate_fidelity but only one value for the other parameter.
+# Delta determines whether the actual value of the output fidelity or the difference in fidelity from input to output is plotted (maybe want to change this to a percentage in the future)
+def extract_1d(results, delta):
+    # Auto infer sweep param
+    unique_fs = {f for f, _ in results}
+    unique_gs = {g for _, g in results}
 
+    if len(unique_fs) > 1 and len(unique_gs) > 1:
+        raise ValueError("Data is not 1D: both fidelity and gate_fidelity vary.")
+    elif len(unique_fs) > 1:
+        sweep_param = 'fidelity'
+    elif len(unique_gs) > 1:
+        sweep_param = 'gate_fidelity'
+    else:
+        raise ValueError("Data is constant — neither fidelity nor gate_fidelity varies.")
+    
     grouped = {}
     for (f, g), stats in results.items():
         key = f if sweep_param == 'fidelity' else g
         grouped[key] = stats
 
     xs = sorted(grouped.keys())
-    avg_fids = [grouped[x]['avg_fidelity'] for x in xs]
+
+    to_plot = 'delta_fidelity' if delta else 'avg_fidelity'
+    avg_fids = [grouped[x][to_plot] for x in xs]
     avg_fid_errs = [grouped[x]['avg_fidelity_err'] for x in xs]
     succ_probs = [grouped[x]['success_probability'] for x in xs]
     succ_prob_errs = [grouped[x]['success_probability_err'] for x in xs]
 
+    return xs, avg_fids, avg_fid_errs, succ_probs, succ_prob_errs, sweep_param
+
+
+def plot_fidelity(results_list, title=None, delta=False):
     fig, ax1 = plt.subplots()
 
-    ax1.errorbar(xs, avg_fids, yerr=avg_fid_errs, label='Average Fidelity', fmt='-o', color='tab:blue')
-    ax1.set_ylabel('Average Fidelity', color='tab:blue')
+    for protocol, result in results_list:
+        xs, avg_fids, avg_fid_errs, _, _, sweep_param = extract_1d(result, delta)
+        ax1.errorbar(xs, avg_fids, yerr=avg_fid_errs,
+                         fmt='-o', label=protocol,
+                         capsize=3)
+    
     ax1.set_xlabel(sweep_param.replace('_', ' ').title())
-    ax1.tick_params(axis='y', labelcolor='tab:blue')
-
-    ax2 = ax1.twinx()
-    ax2.errorbar(xs, succ_probs, yerr=succ_prob_errs, label='Success Probability', fmt='-s', color='tab:green')
-    ax2.set_ylabel('Success Probability', color='tab:green')
-    ax2.tick_params(axis='y', labelcolor='tab:green')
-
+    ax1.set_ylabel('Δ Fidelity' if delta else 'Average Fidelity')
     fig.tight_layout()
     if title is None:
-        title = f'Sweep of {sweep_param.replace("_", " ").title()}'
+        title = f"Sweep of {sweep_param.replace('_', ' ').title()}"
     plt.title(title)
     plt.grid(True)
+    plt.legend()
+    plt.show()
+
+
+def plot_success_prob(results_list, title=None, delta=False):
+    fig, ax1 = plt.subplots()
+
+    for protocol, result in results_list:
+        xs, _, _, success_probs, success_prob_errs, sweep_param = extract_1d(result, delta)
+        ax1.errorbar(xs, success_probs, yerr=success_prob_errs,
+                         fmt='-o', label=protocol,
+                         capsize=3)
+    
+    ax1.set_xlabel(sweep_param.replace('_', ' ').title())
+    ax1.set_ylabel('Success probability')
+    fig.tight_layout()
+    if title is None:
+        title = f"Sweep of {sweep_param.replace('_', ' ').title()}"
+    plt.title(title)
+    plt.grid(True)
+    plt.legend()
     plt.show()
 
 

@@ -92,7 +92,7 @@ def print_protocol_summary(protocol_data, fidelity_range=None, gate_fidelity_ran
 # Helper for below function to compute statistics and errors at a fixed link/gate fidelity combo
 # Computes output fidelity with respect to given Bell state and estimates error with bootstrap
 # Computes success probability and estimates error with known stderr formula for binomial RVs
-def analyze_single_combo(matrices, successes, target_bell_state, n_bootstrap=1000, seed=None):
+def analyze_single_combo(matrices, successes, target_bell_state, fidelity_in, n_bootstrap=1000, seed=None):
     rng = np.random.default_rng(seed)
     successes = np.asarray(successes, dtype=bool)
     total = len(successes)
@@ -129,9 +129,13 @@ def analyze_single_combo(matrices, successes, target_bell_state, n_bootstrap=100
         sample = rng.choice(fidelities, size=len(fidelities), replace=True)
         bootstrap_means.append(sample.mean())
 
+    fid_mean = fidelities.mean()
+    fid_err = np.std(bootstrap_means)
+
     return {
-        'avg_fidelity': fidelities.mean(),
-        'avg_fidelity_err': np.std(bootstrap_means),
+        'avg_fidelity': fid_mean,
+        'avg_fidelity_err': fid_err,
+        'delta_fidelity': fid_mean - fidelity_in,  # same error/spread as regular fidelities
         'success_probability': success_probability,
         'success_probability_err': np.sqrt(success_probability * (1 - success_probability) / total)
     }
@@ -147,8 +151,8 @@ def analyze_multiple_combos(protocol_data,
     result = {}
     f_gs = filter_keys_by_range(protocol_data, fidelity_range, gate_fidelity_range)
 
-    for f_g in f_gs:
-        entry = protocol_data[f_g]
+    for (f, g) in f_gs:
+        entry = protocol_data[f, g]
         protocol = entry['protocol']
         if target_bell_state is None:
             target_bell_state = phi_01 if protocol == 'epl_local_change' else phi_00
@@ -157,10 +161,11 @@ def analyze_multiple_combos(protocol_data,
             entry['matrices'],
             entry['successes'],
             target_bell_state,
+            fidelity_in=f,
             n_bootstrap=n_bootstrap,
             seed=seed,
         )
-        result[f_g] = stats
+        result[f, g] = stats
 
     return result
 
