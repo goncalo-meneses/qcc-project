@@ -2,24 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def protocol_string(protocol):
-    if protocol == 'dejmps':
-        return 'DEJMPS'
-    if protocol == 'bbpssw':
-        return 'BBPSSW'
-    if protocol == 'epl':
-        return 'EPL'
-    if protocol == 'epl_local_change':
-        return r'EPL with $X_B$ correction applied'
-    
-
-# hacky thing to get pretty protocol name
-def protocol_string_from_dict(dict):
-    first_data = next(iter(dict.values()))
-    protocol = first_data['protocol']
-    return protocol_string(protocol)
-
-
 # Given a result dict, tries to extract 1D data. This means that the input must have multiple values for either fidelity or gate_fidelity but only one value for the other parameter.
 # Delta determines whether the actual value of the output fidelity or the difference in fidelity from input to output is plotted (maybe want to change this to a percentage in the future)
 def extract_1d(results, delta):

@@ -3,7 +3,6 @@
 import numpy as np
 import os
 from collections import defaultdict
-from plotting import protocol_string_from_dict
 
 
 # === Reading data ===
@@ -74,7 +73,7 @@ def filter_keys_by_range(protocol_data, fidelity_range=None, gate_fidelity_range
 
 # Helper to see quantity of available data in some range
 def print_protocol_summary(protocol_data, fidelity_range=None, gate_fidelity_range=None):
-    print(f"Summary for protocol: {protocol_string_from_dict(protocol_data)}")
+    print(f"Summary for protocol")
     print("-" * 50)
     
     f_gs = filter_keys_by_range(protocol_data, fidelity_range, gate_fidelity_range)
