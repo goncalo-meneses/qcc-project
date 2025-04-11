@@ -119,7 +119,7 @@ def analyze_single_combo(matrices, successes, target_bell_state, fidelity_in, n_
     successful_matrices = matrices[successes]
 
     # shape of matrix product is (N, 4, 4), so axis1 and axis2 should point to 1 and 2 for the matrix dimensions
-    fidelities = np.trace(matrices @ target_bell_state, axis1=1, axis2=2)
+    fidelities = np.trace(successful_matrices @ target_bell_state, axis1=1, axis2=2)
     fidelities = np.real_if_close(fidelities)
 
     # Bootstrap the fidelity mean
