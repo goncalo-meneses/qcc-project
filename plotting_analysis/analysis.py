@@ -114,7 +114,7 @@ def analyze_single_combo(matrices, successes, target_bell_state, fidelity_in, n_
             'success_probability': success_probability,
             'success_probability_std': 0.0,
         }
-
+ 
     # Extract successful matrices
     successful_matrices = matrices[successes]
 

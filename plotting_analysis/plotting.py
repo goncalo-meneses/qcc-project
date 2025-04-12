@@ -1,6 +1,7 @@
+import IPython
 import numpy as np
 import matplotlib.pyplot as plt
-
+from analysis import *
 
 # Given a result dict, tries to extract 1D data. This means that the input must have multiple values for either fidelity or gate_fidelity but only one value for the other parameter.
 # Delta determines whether the actual value of the output fidelity or the difference in fidelity from input to output is plotted (maybe want to change this to a percentage in the future)
@@ -74,44 +75,125 @@ def plot_success_prob(results_list, title=None, delta=False):
     plt.show()
 
 
-def plot_2d_heatmaps(results, title_prefix=""):
-    
-    # todo: crash if given results aren't 2d
+def plot_combo_scatter(results_dict, protocol_data=None, 
+                       color_by='avg_fidelity', deltas=False, 
+                       cbar_range=None, title=None, cmap='viridis'):
+    """
+    Scatter plot of (fidelity, gate_fidelity) combinations colored by a quantity.
 
-    keys = sorted(results.keys())
-    fidelities = sorted(set(f for f, _ in keys))
-    gate_fidelities = sorted(set(g for _, g in keys))
+    Args:
+        results_dict: Dict with (fidelity, gate_fidelity) keys and stats as values.
+        protocol_data: Required if color_by='num_runs' or deltas=True.
+        color_by: 'avg_fidelity' or 'num_runs'. What to color points by.
+        deltas: If True, color by output fidelity minus input fidelity.
+        cbar_range: Optional (vmin, vmax) for colorbar. Useful for comparison between protocols.
+        title: Optional plot title.
+        cmap: Colormap.
+    """
+    assert color_by in ('avg_fidelity', 'num_runs'), "color_by must be 'avg_fidelity' or 'num_runs'"
+    if deltas and color_by != 'avg_fidelity':
+        raise ValueError("deltas=True is only valid when color_by='avg_fidelity'")
+    if color_by == 'num_runs' and protocol_data is None:
+        raise ValueError("protocol_data must be provided when deltas=True")
 
-    fidelity_idx = {f: i for i, f in enumerate(fidelities)}
-    gate_fid_idx = {g: i for i, g in enumerate(gate_fidelities)}
+    fids = []
+    gates = []
+    values = []
 
-    avg_fid_grid = np.full((len(fidelities), len(gate_fidelities)), np.nan)
-    succ_prob_grid = np.full((len(fidelities), len(gate_fidelities)), np.nan)
+    for (f, g), stats in results_dict.items():
+        if color_by == 'avg_fidelity':
+            fid_out = stats['avg_fidelity']
+            if fid_out is None:
+                continue
+            val = stats['delta_fidelity'] if deltas else fid_out
+        elif color_by == 'num_runs':
+            val = len(protocol_data[(f, g)]['matrices'])
+        fids.append(f)
+        gates.append(g)
+        values.append(val)
 
-    for (f, g), stats in results.items():
-        i, j = fidelity_idx[f], gate_fid_idx[g]
-        avg_fid_grid[i, j] = stats['avg_fidelity']
-        succ_prob_grid[i, j] = stats['success_probability']
+    fig, ax = plt.subplots()
+    sc = ax.scatter(gates, fids, c=values, cmap=cmap, s=60, edgecolor='k', vmin=None if cbar_range is None else cbar_range[0], vmax=None if cbar_range is None else cbar_range[1])
+    cbar = plt.colorbar(sc, ax=ax)
 
-    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    if color_by == 'avg_fidelity':
+        cbar.set_label('Δ Fidelity (Output - Input)' if deltas else 'Average Output Fidelity')
+    else:
+        cbar.set_label('Number of Simulations')
 
-    im1 = axs[0].imshow(avg_fid_grid, origin='lower', aspect='auto', cmap='viridis',
-                        extent=[min(gate_fidelities), max(gate_fidelities), min(fidelities), max(fidelities)])
-    axs[0].set_title(f'{title_prefix} Avg Fidelity')
-    axs[0].set_xlabel('Gate Fidelity')
-    axs[0].set_ylabel('Fidelity')
-    fig.colorbar(im1, ax=axs[0])
-
-    im2 = axs[1].imshow(succ_prob_grid, origin='lower', aspect='auto', cmap='plasma',
-                        extent=[min(gate_fidelities), max(gate_fidelities), min(fidelities), max(fidelities)])
-    axs[1].set_title(f'{title_prefix} Success Probability')
-    axs[1].set_xlabel('Gate Fidelity')
-    axs[1].set_ylabel('Fidelity')
-    fig.colorbar(im2, ax=axs[1])
-
-    plt.suptitle(f"{title_prefix} Results")
+    ax.set_xlabel('Gate Fidelity')
+    ax.set_ylabel('Input Fidelity')
+    ax.set_title(title or f'Simulation Coverage Colored by {"Δ Fidelity" if deltas else color_by.replace("_", " ").title()}')
+    ax.grid(True)
     plt.tight_layout()
     plt.show()
+
+
+# not sure yet if this is correct
+# also maybe want to add success prob option
+def plot_combo_heatmap(results_dict, deltas=False, cbar_range=None, title=None, cmap='viridis', bins=20, highlight_positive_deltas=False):
+    """
+    Plots a heatmap of average output fidelity or fidelity delta over (fidelity, gate_fidelity) combos.
+    Uses histogram2d to handle uneven grid spacing robustly.
+    Can optionally highlight cells with positive fidelity delta.
+    """
+    # Extract data
+    f_vals = []
+    g_vals = []
+    weights = []
+
+    for (f, g), stats in results_dict.items():
+        fid = stats.get('avg_fidelity')
+        if fid is None:
+            continue
+        f_vals.append(f)
+        g_vals.append(g)
+        weights.append(fid - f if deltas else fid)
+
+    f_vals = np.array(f_vals)
+    g_vals = np.array(g_vals)
+    weights = np.array(weights)
+
+    # Bin the data using histogram2d
+    H_sum, f_edges, g_edges = np.histogram2d(
+        f_vals, g_vals, bins=bins, weights=weights
+    )
+    H_count, _, _ = np.histogram2d(
+        f_vals, g_vals, bins=[f_edges, g_edges]
+    )
+
+    # Avoid division by zero
+    with np.errstate(divide='ignore', invalid='ignore'):
+        H_avg = np.divide(H_sum, H_count)
+        H_avg = np.where(H_count == 0, np.nan, H_avg)
+
+    # Create the plot
+    fig, ax = plt.subplots()
+    mesh = ax.pcolormesh(g_edges, f_edges, H_avg, cmap=cmap,
+                         vmin=cbar_range[0] if cbar_range else None,
+                         vmax=cbar_range[1] if cbar_range else None,
+                         shading='auto')
+
+    cbar = fig.colorbar(mesh, ax=ax)
+    cbar.set_label('Δ Fidelity (Output - Input)' if deltas else 'Average Output Fidelity')
+
+    ax.set_xlabel('Gate Fidelity')
+    ax.set_ylabel('Input Fidelity')
+    ax.set_title(title or ('Δ Fidelity Heatmap' if deltas else 'Output Fidelity Heatmap'))
+
+    # Overlay markers for positive deltas
+    if highlight_positive_deltas and deltas:
+        f_centers = 0.5 * (f_edges[:-1] + f_edges[1:])
+        g_centers = 0.5 * (g_edges[:-1] + g_edges[1:])
+        for i in range(len(f_centers)):
+            for j in range(len(g_centers)):
+                if not np.isnan(H_avg[i, j]) and H_avg[i, j] > 0:
+                    ax.plot(g_centers[j], f_centers[i], marker='o', color='red', markersize=3)
+
+    plt.tight_layout()
+    plt.show()
+
+
 
 # todo: maybe 3d barplot or something
 
