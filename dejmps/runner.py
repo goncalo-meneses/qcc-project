@@ -7,10 +7,9 @@ network_yaml_path = "network.yaml"
 num_runs_per_sim = 100
 
 # Arrays to sweep through
-fidelity_values = [0.7]
-gate_fidelity_values = [0.99  , 0.9905, 0.991 , 0.9915, 0.992 , 0.9925, 0.993 , 0.9935,
-       0.994 , 0.9945, 0.995 , 0.9955, 0.996 , 0.9965, 0.997 , 0.9975,
-       0.998 , 0.9985, 0.999 , 0.9995, 1.    ]
+fidelity_values = [0.7  , 0.725, 0.75 , 0.775, 0.8  , 0.825, 0.85 , 0.875, 0.9  ,
+       0.925, 0.95 , 0.975, 1.   ]
+gate_fidelity_values = [0.9 , 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99, 1.  ]
 
 # Helper function to update network.yaml
 def update_network_yaml(fidelity, gate_fidelity):
