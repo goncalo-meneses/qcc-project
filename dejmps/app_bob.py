@@ -6,6 +6,14 @@ from dejmps import dejmps_protocol_bob
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
 
+def get_fidelity(dm):
+    '''
+    Computes the fidelity of a pure state and a density matrix
+    returns computed fidelity
+    '''
+    state = np.array([1/np.sqrt(2), 0, 0, 1/np.sqrt(2)])
+    fid = np.dot(state.conj().T, np.dot(dm, state))
+    return np.real_if_close(fid.item())
 
 def read_simulation_parameters(yaml_path="network.yaml"):
     with open(yaml_path, "r") as f:
@@ -32,6 +40,7 @@ def main(app_config=None):
         dens_out = get_qubit_state(epr_1, reduced_dm=False)
 
     fidelity, gate_fidelity = read_simulation_parameters()
+    print(get_fidelity(dens_out))
 
     FILENAME = f'./data/f={fidelity}_g={gate_fidelity}_dejmps.npz'
 
