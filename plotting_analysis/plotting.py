@@ -34,15 +34,27 @@ def extract_1d(results, delta):
     return xs, avg_fids, avg_fid_errs, succ_probs, succ_prob_errs, sweep_param
 
 
-def plot_fidelity(results_list, title=None, delta=False):
+def plot_fidelity(results_list, title=None, delta=False, theoretical_f=False):
     fig, ax1 = plt.subplots()
 
     for protocol, result in results_list:
         xs, avg_fids, avg_fid_errs, _, _, sweep_param = extract_1d(result, delta)
         ax1.errorbar(xs, avg_fids, yerr=avg_fid_errs,
-                         fmt='-o', label=protocol,
-                         capsize=3)
-    
+                     fmt='-o', label=protocol,
+                     capsize=3)
+
+    if theoretical_f:
+        F = np.linspace(0.45, 1, 500)
+        psucc = F**2 + 2 * F * (1 - F)/3 + 5 * ((1 - F)/3)**2
+        Fout = (F**2 + ((1 - F)/3)**2) / psucc
+        ax1.plot(F, Fout, '-', label=r'$F_{out}$ (BBPSSW)', color='red', linewidth=2)
+
+    if theoretical_f:
+        F = np.linspace(0.45, 1, 500)
+        psucc = (1 + F**2) / 2
+        Fout = 5 / 4 + (F - 2) / (4 * psucc)
+        ax1.plot(F, Fout, '-', label=r'$F_{out}$ (DEJMPS)', color='black', linewidth=2)
+
     ax1.set_xlabel(sweep_param.replace('_', ' ').title())
     ax1.set_ylabel('Δ Fidelity' if delta else 'Average Fidelity')
     fig.tight_layout()
@@ -54,7 +66,7 @@ def plot_fidelity(results_list, title=None, delta=False):
     plt.show()
 
 
-def plot_success_prob(results_list, title=None, delta=False):
+def plot_success_prob(results_list, title=None, delta=False, theoretical_p=False):
     fig, ax1 = plt.subplots()
 
     for protocol, result in results_list:
@@ -62,6 +74,16 @@ def plot_success_prob(results_list, title=None, delta=False):
         ax1.errorbar(xs, success_probs, yerr=success_prob_errs,
                          fmt='-o', label=protocol,
                          capsize=3)
+        
+    if theoretical_p:
+        F = np.linspace(0.45, 1, 500)
+        psucc = F**2 + 2 * F * (1 - F)/3 + 5 * ((1 - F)/3)**2
+        ax1.plot(F, psucc, '-', label=r'$p_{succ}$ (BBPSSW)', color='red', linewidth=2)
+
+    if theoretical_p:
+        F = np.linspace(0.45, 1, 500)
+        psucc = (1 + F**2) / 2
+        ax1.plot(F, psucc, '-', label=r'$p_{succ}$ (DEJMPS)', color='black', linewidth=2)
     
     ax1.set_xlabel(sweep_param.replace('_', ' ').title())
     ax1.set_ylabel('Success probability')
