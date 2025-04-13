@@ -2,6 +2,7 @@ import IPython
 import numpy as np
 import matplotlib.pyplot as plt
 from analysis import *
+import matplotlib.patches as patches
 
 # Given a result dict, tries to extract 1D data. This means that the input must have multiple values for either fidelity or gate_fidelity but only one value for the other parameter.
 # Delta determines whether the actual value of the output fidelity or the difference in fidelity from input to output is plotted (maybe want to change this to a percentage in the future)
@@ -153,43 +154,45 @@ def plot_combo_scatter(results_dict, protocol_data=None,
 
 # not sure yet if this is correct
 # also maybe want to add success prob option
-def plot_combo_heatmap(results_dict, deltas=False, cbar_range=None, title=None, cmap='viridis', bins=20, highlight_positive_deltas=False):
+def plot_fidelity_heatmap(results_dict,
+                          deltas=False,
+                          cbar_range=None,
+                          title=None,
+                          cmap='viridis',
+                          bins=20,
+                          highlight_positive_deltas=False,
+                          scatter_overlay=False):
     """
-    Plots a heatmap of average output fidelity or fidelity delta over (fidelity, gate_fidelity) combos.
-    Uses histogram2d to handle uneven grid spacing robustly.
-    Can optionally highlight cells with positive fidelity delta.
+    Heatmap of output fidelity or Δ fidelity over (input fidelity, gate fidelity).
     """
-    # Extract data
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    import numpy as np
+
     f_vals = []
     g_vals = []
     weights = []
 
     for (f, g), stats in results_dict.items():
         fid = stats.get('avg_fidelity')
-        if fid is None:
+        val = fid - f if (deltas and fid is not None) else fid
+        if val is None:
             continue
         f_vals.append(f)
         g_vals.append(g)
-        weights.append(fid - f if deltas else fid)
+        weights.append(val)
 
     f_vals = np.array(f_vals)
     g_vals = np.array(g_vals)
     weights = np.array(weights)
 
-    # Bin the data using histogram2d
-    H_sum, f_edges, g_edges = np.histogram2d(
-        f_vals, g_vals, bins=bins, weights=weights
-    )
-    H_count, _, _ = np.histogram2d(
-        f_vals, g_vals, bins=[f_edges, g_edges]
-    )
+    H_sum, f_edges, g_edges = np.histogram2d(f_vals, g_vals, bins=bins, weights=weights)
+    H_count, _, _ = np.histogram2d(f_vals, g_vals, bins=[f_edges, g_edges])
 
-    # Avoid division by zero
     with np.errstate(divide='ignore', invalid='ignore'):
         H_avg = np.divide(H_sum, H_count)
         H_avg = np.where(H_count == 0, np.nan, H_avg)
 
-    # Create the plot
     fig, ax = plt.subplots()
     mesh = ax.pcolormesh(g_edges, f_edges, H_avg, cmap=cmap,
                          vmin=cbar_range[0] if cbar_range else None,
@@ -201,21 +204,83 @@ def plot_combo_heatmap(results_dict, deltas=False, cbar_range=None, title=None, 
 
     ax.set_xlabel('Gate Fidelity')
     ax.set_ylabel('Input Fidelity')
+
     ax.set_title(title or ('Δ Fidelity Heatmap' if deltas else 'Output Fidelity Heatmap'))
 
-    # Overlay markers for positive deltas
     if highlight_positive_deltas and deltas:
-        f_centers = 0.5 * (f_edges[:-1] + f_edges[1:])
-        g_centers = 0.5 * (g_edges[:-1] + g_edges[1:])
-        for i in range(len(f_centers)):
-            for j in range(len(g_centers)):
+        for i in range(len(f_edges) - 1):
+            for j in range(len(g_edges) - 1):
                 if not np.isnan(H_avg[i, j]) and H_avg[i, j] > 0:
-                    ax.plot(g_centers[j], f_centers[i], marker='o', color='red', markersize=3)
+                    rect = patches.Rectangle(
+                        (g_edges[j], f_edges[i]),
+                        g_edges[j + 1] - g_edges[j],
+                        f_edges[i + 1] - f_edges[i],
+                        linewidth=1.5, edgecolor='red', facecolor='none'
+                    )
+                    ax.add_patch(rect)
+
+    if scatter_overlay:
+        ax.scatter(g_vals, f_vals, color='black', s=10, alpha=0.5, label='Sampled Combos')
+        ax.legend(loc='lower right')
 
     plt.tight_layout()
     plt.show()
 
 
+def plot_success_probability_heatmap(results_dict,
+                                     cbar_range=None,
+                                     title=None,
+                                     cmap='viridis',
+                                     bins=20,
+                                     scatter_overlay=False):
+    """
+    Heatmap of success probability over (input fidelity, gate fidelity).
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    f_vals = []
+    g_vals = []
+    weights = []
+
+    for (f, g), stats in results_dict.items():
+        prob = stats.get('success_probability')
+        if prob is None:
+            continue
+        f_vals.append(f)
+        g_vals.append(g)
+        weights.append(prob)
+
+    f_vals = np.array(f_vals)
+    g_vals = np.array(g_vals)
+    weights = np.array(weights)
+
+    H_sum, f_edges, g_edges = np.histogram2d(f_vals, g_vals, bins=bins, weights=weights)
+    H_count, _, _ = np.histogram2d(f_vals, g_vals, bins=[f_edges, g_edges])
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        H_avg = np.divide(H_sum, H_count)
+        H_avg = np.where(H_count == 0, np.nan, H_avg)
+
+    fig, ax = plt.subplots()
+    mesh = ax.pcolormesh(g_edges, f_edges, H_avg, cmap=cmap,
+                         vmin=cbar_range[0] if cbar_range else None,
+                         vmax=cbar_range[1] if cbar_range else None,
+                         shading='auto')
+
+    cbar = fig.colorbar(mesh, ax=ax)
+    cbar.set_label('Success Probability')
+
+    ax.set_xlabel('Gate Fidelity')
+    ax.set_ylabel('Input Fidelity')
+    ax.set_title(title or 'Success Probability Heatmap')
+
+    if scatter_overlay:
+        ax.scatter(g_vals, f_vals, color='black', s=10, alpha=0.5, label='Sampled Combos')
+        ax.legend(loc='lower right')
+
+    plt.tight_layout()
+    plt.show()
 
 # todo: maybe 3d barplot or something
 
