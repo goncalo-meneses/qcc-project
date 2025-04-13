@@ -1,6 +1,6 @@
 import numpy as np
 
-data = np.load("./dejmps/data/f=0.46_g=1_dejmps.npz")
+data = np.load("./dejmps/data/f=0.3_g=1_dejmps.npz")
 print(data.files)
 
 def bell_state():
@@ -25,6 +25,7 @@ def th_fidelity(f):
     return (f**2 + ((1-f)/3)**2) / th_psucc(f)
 
 matrices = data['matrices']
+successes = data['successes']
 dens_out = np.average(matrices, axis=0)
 
 phi_00 = bell_state()
