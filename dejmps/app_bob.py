@@ -40,7 +40,7 @@ def main(app_config=None):
         dens_out = get_qubit_state(epr_1, reduced_dm=False)
 
     fidelity, gate_fidelity = read_simulation_parameters()
-    print(get_fidelity(dens_out))
+    if succ: print(get_fidelity(dens_out))
 
     FILENAME = f'./data/f={fidelity}_g={gate_fidelity}_dejmps.npz'
 

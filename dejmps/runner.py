@@ -4,10 +4,10 @@ import numpy as np
 
 
 network_yaml_path = "network.yaml"
-num_runs_per_sim = 10
+num_runs_per_sim = 100
 
 # Arrays to sweep through
-fidelity_values = [0.777]
+fidelity_values = [0.555, 0.655, 755]
 gate_fidelity_values = [1]
 
 # Helper function to update network.yaml
@@ -29,7 +29,7 @@ def update_network_yaml(fidelity, gate_fidelity):
 # Sweep all combinations
 for fidelity in fidelity_values:
     for gate_fidelity in gate_fidelity_values:
-        # print(f"\n>>> Running simulations for fidelity={fidelity}, gate_fidelity={gate_fidelity}")
+        print(f"\n>>> Running simulations for fidelity={fidelity}, gate_fidelity={gate_fidelity}")
 
         update_network_yaml(fidelity, gate_fidelity)
 
