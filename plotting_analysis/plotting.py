@@ -36,7 +36,7 @@ def extract_1d(results, delta):
     return xs, avg_fids, avg_fid_errs, succ_probs, succ_prob_errs, sweep_param
 
 
-def plot_fidelity(results_list, title=None, delta=False, theoretical_f=False):
+def plot_fidelity(results_list, title=None, delta=False, theoretical_f=False, fr=(0.45, 0.55)):
     fig, ax1 = plt.subplots()
 
     for protocol, result in results_list:
@@ -46,15 +46,15 @@ def plot_fidelity(results_list, title=None, delta=False, theoretical_f=False):
                      capsize=3)
 
     if theoretical_f:
-        F = np.linspace(0.45, 1, 500)
+        F = np.linspace(*fr, 500)
         psucc = F**2 + 2 * F * (1 - F)/3 + 5 * ((1 - F)/3)**2
         Fout = (F**2 + ((1 - F)/3)**2) / psucc
         ax1.plot(F, Fout, '-', label=r'$F_{out}$ (BBPSSW)', color='red', linewidth=2)
 
     if theoretical_f:
-        F = np.linspace(0.45, 1, 500)
-        psucc = (1 + F**2) / 2
-        Fout = 5 / 4 + (F - 2) / (4 * psucc)
+        F = np.linspace(*fr, 500)
+        psucc = (1 + ((4 * F - 1)/3)**2) / 2
+        Fout = 5 / 4 + (4 * F - 7) / (12 * psucc)
         ax1.plot(F, Fout, '-', label=r'$F_{out}$ (DEJMPS)', color='black', linewidth=2)
 
     ax1.set_xlabel(sweep_param.replace('_', ' ').title())
@@ -68,7 +68,7 @@ def plot_fidelity(results_list, title=None, delta=False, theoretical_f=False):
     plt.show()
 
 
-def plot_success_prob(results_list, title=None, delta=False, theoretical_p=False):
+def plot_success_prob(results_list, title=None, delta=False, theoretical_p=False, fr=(0.45, 0.55)):
     fig, ax1 = plt.subplots()
 
     for protocol, result in results_list:
@@ -78,13 +78,13 @@ def plot_success_prob(results_list, title=None, delta=False, theoretical_p=False
                          capsize=3)
         
     if theoretical_p:
-        F = np.linspace(0.45, 1, 500)
+        F = np.linspace(*fr, 500)
         psucc = F**2 + 2 * F * (1 - F)/3 + 5 * ((1 - F)/3)**2
         ax1.plot(F, psucc, '-', label=r'$p_{succ}$ (BBPSSW)', color='red', linewidth=2)
 
     if theoretical_p:
-        F = np.linspace(0.45, 1, 500)
-        psucc = (1 + F**2) / 2
+        F = np.linspace(*fr, 500)
+        psucc = (1 + ((4 * F - 1)/3)**2) / 2
         ax1.plot(F, psucc, '-', label=r'$p_{succ}$ (DEJMPS)', color='black', linewidth=2)
     
     ax1.set_xlabel(sweep_param.replace('_', ' ').title())
