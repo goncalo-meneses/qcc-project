@@ -282,6 +282,118 @@ def plot_success_probability_heatmap(results_dict,
     plt.tight_layout()
     plt.show()
 
+def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=False, markers=None, colors=None):
+    """
+    Plot output fidelity versus success probability for a specific gate fidelity.
+    
+    Args:
+        results_list: List of (protocol_name, results_dict) tuples
+        gate_fidelity: Gate fidelity value to filter by (default: 1.0)
+        title: Optional plot title
+        delta: If True, plot delta fidelity (output - input) instead of absolute fidelity
+        markers: Optional list of markers to use for each protocol
+        colors: Optional list of colors to use for each protocol
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    if markers is None:
+        markers = ['o', 's', '^', 'd', 'v', '<', '>', 'p', '*', 'h']
+    
+    if colors is None:
+        colors = plt.cm.tab10.colors
+    
+    for i, (protocol, results) in enumerate(results_list):
+        # Filter results for the specific gate fidelity
+        filtered_results = {(f, g): stats for (f, g), stats in results.items() 
+                           if abs(g - gate_fidelity) < 1e-6}
+        
+        if not filtered_results:
+            print(f"No data found for protocol {protocol} with gate fidelity {gate_fidelity}")
+            continue
+        
+        # Extract data points
+        fids = []
+        success_probs = []
+        fid_errs = []
+        success_prob_errs = []
+        input_fids = []
+        
+        for (f, g), stats in filtered_results.items():
+            if stats['avg_fidelity'] is None or stats['success_probability'] is None:
+                continue
+            
+            input_fids.append(f)
+            fids.append(stats['delta_fidelity'] if delta else stats['avg_fidelity'])
+            success_probs.append(stats['success_probability'])
+            fid_errs.append(stats['avg_fidelity_err'])
+            success_prob_errs.append(stats['success_probability_err'])
+        
+        # Sort by input fidelity to connect dots in order
+        if input_fids:
+            sort_idx = np.argsort(input_fids)
+            input_fids = np.array(input_fids)[sort_idx]
+            fids = np.array(fids)[sort_idx]
+            success_probs = np.array(success_probs)[sort_idx]
+            fid_errs = np.array(fid_errs)[sort_idx]
+            success_prob_errs = np.array(success_prob_errs)[sort_idx]
+            
+            marker = markers[i % len(markers)]
+            color = colors[i % len(colors)]
+            
+            # Plot with error bars
+            ax.errorbar(
+                success_probs, 
+                fids, 
+                xerr=success_prob_errs, 
+                yerr=fid_errs,
+                fmt=f'-{marker}', 
+                label=f"{protocol} (Input F: {min(input_fids):.2f}-{max(input_fids):.2f})",
+                capsize=3, 
+                color=color,
+                markersize=8
+            )
+            
+            # Add input fidelity annotations to points
+            for j, (sp, fid, in_fid) in enumerate(zip(success_probs, fids, input_fids)):
+                if j % 2 == 0:  # Skip some annotations to avoid overcrowding
+                    ax.annotate(
+                        f"{in_fid:.2f}", 
+                        (sp, fid),
+                        textcoords="offset points", 
+                        xytext=(0, 10),
+                        ha='center',
+                        fontsize=8,
+                        bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7)
+                    )
+    
+    ax.set_xlabel('Success Probability')
+    ax.set_ylabel('Δ Fidelity (Output - Input)' if delta else 'Output Fidelity')
+    
+    if title is None:
+        title = f"Output Fidelity vs Success Probability (Gate Fidelity = {gate_fidelity})"
+    ax.set_title(title)
+    
+    ax.grid(True, linestyle='--', alpha=0.7)
+    ax.legend(loc='best')
+    
+    # Add a diagonal y=x line for reference
+    if not delta:
+        x_min, x_max = ax.get_xlim()
+        y_min, y_max = ax.get_ylim()
+        overall_min = min(x_min, y_min)
+        overall_max = max(x_max, y_max)
+        ax.plot([overall_min, overall_max], [overall_min, overall_max], 'k--', alpha=0.3)
+    else:
+        ax.axhline(y=0, color='k', linestyle='--', alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return fig, ax
+
 # todo: maybe 3d barplot or something
 
 # todo: fits for 1d plots?
