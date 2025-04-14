@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 from analysis import *
 import matplotlib.patches as patches
 
+
+plt.rcParams.update({'font.size': 18, 'axes.labelsize': 16, 'axes.titlesize': 16, 'legend.fontsize': 16})
+
 # Given a result dict, tries to extract 1D data. This means that the input must have multiple values for either fidelity or gate_fidelity but only one value for the other parameter.
 # Delta determines whether the actual value of the output fidelity or the difference in fidelity from input to output is plotted (maybe want to change this to a percentage in the future)
 def extract_1d(results, delta):
@@ -189,10 +192,10 @@ def plot_fidelity_heatmap(results_dict,
                          shading='auto')
 
     cbar = fig.colorbar(mesh, ax=ax)
-    cbar.set_label('Δ Fidelity (Output - Input)' if deltas else 'Average Output Fidelity')
+    cbar.set_label(r'$F_{out}-F_{in}$' if deltas else 'Average Output Fidelity')
 
-    ax.set_xlabel('Gate Fidelity')
-    ax.set_ylabel('Input Fidelity')
+    ax.set_xlabel(r'$F_G$')
+    ax.set_ylabel(r'$F_{in}$')
 
     ax.set_title(title or ('Δ Fidelity Heatmap' if deltas else 'Output Fidelity Heatmap'))
 
@@ -209,8 +212,8 @@ def plot_fidelity_heatmap(results_dict,
                     ax.add_patch(rect)
 
     if scatter_overlay:
-        ax.scatter(g_vals, f_vals, color='black', s=10, alpha=0.5, label='Sampled Combos')
-        ax.legend(loc='lower right')
+        ax.scatter(g_vals, f_vals, color='black', s=10, alpha=0.5, label='Sampled parameters')
+        # ax.legend(loc='lower right')
 
     plt.tight_layout()
     plt.show()
@@ -258,15 +261,15 @@ def plot_success_probability_heatmap(results_dict,
                          shading='auto')
 
     cbar = fig.colorbar(mesh, ax=ax)
-    cbar.set_label('Success Probability')
+    cbar.set_label(r'$p_{succ}$')
 
-    ax.set_xlabel('Gate Fidelity')
-    ax.set_ylabel('Input Fidelity')
+    ax.set_xlabel(r'$F_G$')
+    ax.set_ylabel(r'$F_{in}$')
     ax.set_title(title or 'Success Probability Heatmap')
 
     if scatter_overlay:
         ax.scatter(g_vals, f_vals, color='black', s=10, alpha=0.5, label='Sampled Combos')
-        ax.legend(loc='lower right')
+        # ax.legend(loc='lower right')
 
     plt.tight_layout()
     plt.show()
