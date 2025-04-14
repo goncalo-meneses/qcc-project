@@ -40,9 +40,13 @@ def run_single_simulation(run_id, temp_dir="temp_runs"):
         # extract the fidelity if succesful
         fidelity = 0.0
         if bob_success:
-            fid_match = re.search(r"The fidelity of the final state is: ([0-9.]+)", output)
+            print(f"Debug - Full output: {output}")
+            fid_match = re.search(r"The fidelity of the final state is: ([0-9.e\-+]+)", output)
             if fid_match:
                 fidelity = float(fid_match.group(1))
+                print(f"Debug - Extracted fidelity: {fidelity}")
+            else:
+                print("Debug - No fidelity match found")
         
         return alice_success and bob_success, fidelity
     

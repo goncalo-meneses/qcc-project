@@ -48,8 +48,9 @@ def bbpssw_protocol_bob(q1, q2, bob, socket):
     b = bbpssw_gates_and_measurement_bob(q1, q2)
     bob.flush()
 
-    socket.send(str(b))
     a = int(socket.recv())
+    socket.send(str(b))
+
 
     return True if a == b else False
 

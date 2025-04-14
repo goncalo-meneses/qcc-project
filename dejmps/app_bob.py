@@ -19,6 +19,11 @@ def fidelity(state, dm):
     result = np.dot(bra, np.dot(dm, state))
     return np.real_if_close(result.item())
 
+def th_psucc(f):
+    return f**2 + 2 * f * (1 - f) / 3 + 5 * ((1 - f) / 3)**2
+
+def th_fidelity(f):
+    return (f**2 + ((1-f)/3)**2) / th_psucc(f)
 
 def main(app_config=None):
     socket = Socket("bob", "alice", log_config=app_config.log_config)
@@ -41,6 +46,7 @@ def main(app_config=None):
     if succ:    
         print("Bob succeeded :-)")
         print("The fidelity of the final state is:", f_out)
+        print("The expected fidelity of the final state is:", th_fidelity(0.3))
     else:
         print("Bob did not succceed ;-(")
 
