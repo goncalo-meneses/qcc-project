@@ -47,15 +47,9 @@ def plot_fidelity(results_list, title=None, delta=False, theoretical_f=False, fr
 
     if theoretical_f:
         F = np.linspace(*fr, 500)
-        psucc = F**2 + 2 * F * (1 - F)/3 + 5 * ((1 - F)/3)**2
-        Fout = (F**2 + ((1 - F)/3)**2) / psucc
-        ax1.plot(F, Fout, '-', label=r'$F_{out}$ (BBPSSW)', color='red', linewidth=2)
-
-    if theoretical_f:
-        F = np.linspace(*fr, 500)
         psucc = (1 + ((4 * F - 1)/3)**2) / 2
         Fout = 5 / 4 + (4 * F - 7) / (12 * psucc)
-        ax1.plot(F, Fout, '-', label=r'$F_{out}$ (DEJMPS)', color='black', linewidth=2)
+        ax1.plot(F, Fout, '-', label=r'$F_{out}$', color='black', linewidth=2)
 
     ax1.set_xlabel(sweep_param.replace('_', ' ').title())
     ax1.set_ylabel('Δ Fidelity' if delta else 'Average Fidelity')
@@ -80,12 +74,7 @@ def plot_success_prob(results_list, title=None, delta=False, theoretical_p=False
     if theoretical_p:
         F = np.linspace(*fr, 500)
         psucc = F**2 + 2 * F * (1 - F)/3 + 5 * ((1 - F)/3)**2
-        ax1.plot(F, psucc, '-', label=r'$p_{succ}$ (BBPSSW)', color='red', linewidth=2)
-
-    if theoretical_p:
-        F = np.linspace(*fr, 500)
-        psucc = (1 + ((4 * F - 1)/3)**2) / 2
-        ax1.plot(F, psucc, '-', label=r'$p_{succ}$ (DEJMPS)', color='black', linewidth=2)
+        ax1.plot(F, psucc, '-', label=r'$p_{succ}$', color='black', linewidth=2)
     
     ax1.set_xlabel(sweep_param.replace('_', ' ').title())
     ax1.set_ylabel('Success probability')
@@ -282,7 +271,10 @@ def plot_success_probability_heatmap(results_dict,
     plt.tight_layout()
     plt.show()
 
-def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=False, markers=None, colors=None):
+def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=False, markers=None, colors=None, 
+                             show_theory=True, mark_key_points=True,
+                             xlim=None, ylim=None, show_theory_label=True,
+                             annotate_data_points=False):
     """
     Plot output fidelity versus success probability for a specific gate fidelity.
     
@@ -293,6 +285,12 @@ def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=
         delta: If True, plot delta fidelity (output - input) instead of absolute fidelity
         markers: Optional list of markers to use for each protocol
         colors: Optional list of colors to use for each protocol
+        show_theory: Whether to show theoretical curve
+        mark_key_points: Whether to mark and annotate key points on theoretical curves
+        xlim: Tuple of (xmin, xmax) to set x-axis limits for zooming
+        ylim: Tuple of (ymin, ymax) to set y-axis limits for zooming
+        show_theory_label: Whether to add separate labels for theory curves in legend
+        annotate_data_points: Whether to show input fidelity annotations on data points
     """
     import matplotlib.pyplot as plt
     import numpy as np
@@ -305,6 +303,38 @@ def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=
     if colors is None:
         colors = plt.cm.tab10.colors
     
+    # Plot theoretical curves first so they appear behind the data points
+    if show_theory and not delta:
+        # Theoretical BBPSSW curve
+        def calculate_psucc(F):
+            return F**2 + 2 * F * ((1 - F) / 3) + 5 * ((1 - F) / 3)**2
+        
+        def calculate_fout(F):
+            psucc = calculate_psucc(F)
+            return (F**2 + ((1 - F) / 3)**2) / psucc
+        
+        # Generate curve points
+        F_vals = np.linspace(0.25, 1.0, 1000)  # 1000 points between 0.25 and 1
+        psucc_vals = [calculate_psucc(F) for F in F_vals]
+        fout_vals = [calculate_fout(F) for F in F_vals]
+        
+        # Plot the curve
+        label = 'Theory' if show_theory_label else 'Theory'
+        ax.plot(psucc_vals, fout_vals, '-', color='black', alpha=0.7, linewidth=2, 
+                label=label)
+        
+        # Mark key points
+        if mark_key_points:
+            key_points = [0.5, 0.75, 1.0]
+            for F in key_points:
+                psucc = calculate_psucc(F)
+                fout = calculate_fout(F)
+                ax.plot(psucc, fout, 'ro', markersize=5)  # Red dot
+                ax.annotate(f'F={F}', (psucc, fout), xytext=(5, 5),
+                           textcoords='offset points', fontsize=8,
+                           bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7))
+    
+    # Plot the experimental data
     for i, (protocol, results) in enumerate(results_list):
         # Filter results for the specific gate fidelity
         filtered_results = {(f, g): stats for (f, g), stats in results.items() 
@@ -356,18 +386,19 @@ def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=
                 markersize=8
             )
             
-            # Add input fidelity annotations to points
-            for j, (sp, fid, in_fid) in enumerate(zip(success_probs, fids, input_fids)):
-                if j % 2 == 0:  # Skip some annotations to avoid overcrowding
-                    ax.annotate(
-                        f"{in_fid:.2f}", 
-                        (sp, fid),
-                        textcoords="offset points", 
-                        xytext=(0, 10),
-                        ha='center',
-                        fontsize=8,
-                        bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7)
-                    )
+            # Add input fidelity annotations to points (only if requested)
+            if annotate_data_points:
+                for j, (sp, fid, in_fid) in enumerate(zip(success_probs, fids, input_fids)):
+                    if j % 2 == 0:  # Skip some annotations to avoid overcrowding
+                        ax.annotate(
+                            f"{in_fid:.2f}", 
+                            (sp, fid),
+                            textcoords="offset points", 
+                            xytext=(0, 10),
+                            ha='center',
+                            fontsize=8,
+                            bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7)
+                        )
     
     ax.set_xlabel('Success Probability')
     ax.set_ylabel('Δ Fidelity (Output - Input)' if delta else 'Output Fidelity')
@@ -388,6 +419,12 @@ def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=
         ax.plot([overall_min, overall_max], [overall_min, overall_max], 'k--', alpha=0.3)
     else:
         ax.axhline(y=0, color='k', linestyle='--', alpha=0.3)
+    
+    # Set axis limits for zooming if provided
+    if xlim is not None:
+        ax.set_xlim(xlim)
+    if ylim is not None:
+        ax.set_ylim(ylim)
     
     plt.tight_layout()
     plt.show()
