@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from analysis import *
 import matplotlib.patches as patches
+from scipy import stats
 
 # Given a result dict, tries to extract 1D data. This means that the input must have multiple values for either fidelity or gate_fidelity but only one value for the other parameter.
 # Delta determines whether the actual value of the output fidelity or the difference in fidelity from input to output is plotted (maybe want to change this to a percentage in the future)
@@ -36,20 +37,53 @@ def extract_1d(results, delta):
     return xs, avg_fids, avg_fid_errs, succ_probs, succ_prob_errs, sweep_param
 
 
-def plot_fidelity(results_list, title=None, delta=False, theoretical_f=False, fr=(0.45, 0.55)):
+def plot_fidelity(results_list, title=None, delta=False, theoretical_f=False, th_delta=False, fr=(0.45, 0.55), fit_lines=False, save_path=None):
+    from scipy import stats
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
     fig, ax1 = plt.subplots()
+    fit_results = {}
 
     for protocol, result in results_list:
         xs, avg_fids, avg_fid_errs, _, _, sweep_param = extract_1d(result, delta)
         ax1.errorbar(xs, avg_fids, yerr=avg_fid_errs,
                      fmt='-o', label=protocol,
                      capsize=3)
+        
+        # Add linear fit if requested
+        if fit_lines and len(xs) > 1:
+            # Perform linear regression
+            slope, intercept, r_value, p_value, std_err = stats.linregress(xs, avg_fids)
+            
+            # Store fit results
+            fit_results[protocol] = {
+                'slope': slope,
+                'intercept': intercept,
+                'r_squared': r_value**2,
+                'p_value': p_value,
+                'std_err': std_err
+            }
+            
+            # Create fit line
+            fit_x = np.array([min(xs), max(xs)])
+            fit_y = slope * fit_x + intercept
+            
+            # Plot fit line
+            ax1.plot(fit_x, fit_y, '--', linewidth=1.5)
 
     if theoretical_f:
         F = np.linspace(*fr, 500)
         psucc = (1 + ((4 * F - 1)/3)**2) / 2
         Fout = 5 / 4 + (4 * F - 7) / (12 * psucc)
         ax1.plot(F, Fout, '-', label=r'$F_{out}$', color='black', linewidth=2)
+
+    if th_delta:
+        F = np.linspace(*fr, 500)
+        psucc = (1 + ((4 * F - 1)/3)**2) / 2
+        Fout = 5 / 4 + (4 * F - 7) / (12 * psucc)
+        delta_out = Fout - F
+        ax1.plot(F, delta_out, '-', label=r'$\Delta$', color='black', linewidth=2)
 
     ax1.set_xlabel(sweep_param.replace('_', ' ').title())
     ax1.set_ylabel('Δ Fidelity' if delta else 'Average Fidelity')
@@ -59,7 +93,23 @@ def plot_fidelity(results_list, title=None, delta=False, theoretical_f=False, fr
     plt.title(title)
     plt.grid(True)
     plt.legend()
-    plt.show()
+    plt.rcParams.update({'font.size': 18, 'axes.labelsize': 16, 'axes.titlesize': 16, 'legend.fontsize': 16})
+    
+    # Print the fit results
+    if fit_lines:
+        print("Linear fit results:")
+        for protocol, params in fit_results.items():
+            print(f"{protocol}: slope = {params['slope']:.4f}, R² = {params['r_squared']:.4f}")
+    
+    # Save the figure if a path is provided
+    if save_path:
+        plt.savefig(save_path, format='svg')
+    
+    # For backward compatibility: return only fig, ax if fit_lines is False
+    if not fit_lines:
+        return fig, ax1
+    else:
+        return fig, ax1, fit_results
 
 
 def plot_success_prob(results_list, title=None, delta=False, theoretical_p=False, fr=(0.45, 0.55)):
@@ -84,7 +134,8 @@ def plot_success_prob(results_list, title=None, delta=False, theoretical_p=False
     plt.title(title)
     plt.grid(True)
     plt.legend()
-    plt.show()
+    plt.rcParams.update({'font.size': 18, 'axes.labelsize': 16, 'axes.titlesize': 16, 'legend.fontsize': 16})
+    return fig, ax1
 
 
 def plot_combo_scatter(results_dict, protocol_data=None, 
@@ -331,7 +382,7 @@ def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=
                 fout = calculate_fout(F)
                 ax.plot(psucc, fout, 'ro', markersize=5)  # Red dot
                 ax.annotate(f'F={F}', (psucc, fout), xytext=(5, 5),
-                           textcoords='offset points', fontsize=8,
+                           textcoords='offset points', fontsize=14,
                            bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7))
     
     # Plot the experimental data
@@ -380,7 +431,7 @@ def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=
                 xerr=success_prob_errs, 
                 yerr=fid_errs,
                 fmt=f'-{marker}', 
-                label=f"{protocol} (Input F: {min(input_fids):.2f}-{max(input_fids):.2f})",
+                label=fr'{protocol} ($F_{{in}}$: {min(input_fids):.2f}-{max(input_fids):.2f})',
                 capsize=3, 
                 color=color,
                 markersize=8
@@ -404,7 +455,7 @@ def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=
     ax.set_ylabel('Δ Fidelity (Output - Input)' if delta else 'Output Fidelity')
     
     if title is None:
-        title = f"Output Fidelity vs Success Probability (Gate Fidelity = {gate_fidelity})"
+        title = fr'Output Fidelity vs Success Probability ($F_G$ = {gate_fidelity})'
     ax.set_title(title)
     
     ax.grid(True, linestyle='--', alpha=0.7)
@@ -428,9 +479,134 @@ def plot_fidelity_vs_success(results_list, gate_fidelity=1.0, title=None, delta=
     
     plt.tight_layout()
     plt.show()
+    plt.rcParams.update({'font.size': 18, 'axes.labelsize': 16, 'axes.titlesize': 16, 'legend.fontsize': 16})
     
     return fig, ax
 
+def plot_fidelity_with_fit(results_list, title='', delta=False, save_path=None):
+    """
+    Plot fidelity vs gate fidelity with linear fits for each protocol.
+    
+    Parameters:
+    -----------
+    results_list : list of tuples
+        List of (protocol_name, results_data) tuples
+    title : str
+        Plot title
+    delta : bool
+        Whether to plot delta fidelity (output - input)
+    save_path : str, optional
+        Path to save the SVG file
+        
+    Returns:
+    --------
+    dict
+        Dictionary mapping protocol names to their linear fit slopes
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from scipy import stats
+    
+    plt.figure(figsize=(10, 7))
+    
+    # Dictionary to store slopes
+    fit_results = {}
+    
+    for label, results in results_list:
+        gate_fids = []
+        mean_fids = []
+        std_fids = []
+        
+        # Print keys to debug the structure
+        # Let's examine the first item to understand the structure
+        if results:
+            first_key = next(iter(results))
+            print(f"Debug - Protocol {label} result keys: {results[first_key].keys()}")
+        
+        for gate_fid, result in results.items():
+            # Adjust these keys based on your actual data structure
+            if 'fidelities' in result:
+                fids = np.array(result['fidelities'])
+            elif 'output_fidelities' in result:
+                fids = np.array(result['output_fidelities'])
+            elif 'fids' in result:
+                fids = np.array(result['fids'])
+            elif 'mean_fidelity' in result:
+                # If you only have the mean already calculated
+                mean_fids.append(result['mean_fidelity'])
+                std_fids.append(result.get('std_fidelity', 0))
+                gate_fids.append(gate_fid)
+                continue
+            else:
+                # Print available keys for debugging
+                print(f"Warning: Could not find fidelity data for {label} at gate_fid {gate_fid}")
+                print(f"Available keys: {result.keys()}")
+                continue
+                
+            gate_fids.append(gate_fid)
+            if delta and 'input_fidelities' in result:
+                # Calculate delta fidelity if requested
+                input_fids = np.array(result['input_fidelities'])
+                fids = fids - input_fids
+                
+            mean_fids.append(np.mean(fids))
+            std_fids.append(np.std(fids))
+        
+        if not gate_fids:
+            print(f"Warning: No valid data points for {label}")
+            continue
+            
+        # Sort by gate fidelity to ensure proper plotting
+        sorted_indices = np.argsort(gate_fids)
+        gate_fids = np.array(gate_fids)[sorted_indices]
+        mean_fids = np.array(mean_fids)[sorted_indices]
+        std_fids = np.array(std_fids)[sorted_indices]
+        
+        # Plot data points with error bars
+        plt.errorbar(gate_fids, mean_fids, yerr=std_fids, marker='o', label=label)
+        
+        # Perform linear fit
+        slope, intercept, r_value, p_value, std_err = stats.linregress(gate_fids, mean_fids)
+        fit_results[label] = {
+            'slope': slope, 
+            'intercept': intercept, 
+            'r_squared': r_value**2,
+            'p_value': p_value, 
+            'std_err': std_err
+        }
+        
+        # Plot the linear fit
+        fit_line = slope * np.array(gate_fids) + intercept
+        plt.plot(gate_fids, fit_line, '--', linewidth=1.5)
+    
+    plt.grid(True)
+    plt.title(title)
+    plt.xlabel('Gate Fidelity')
+    
+    if delta:
+        plt.ylabel('Fidelity Improvement')
+    else:
+        plt.ylabel('Average Fidelity')
+        
+    plt.legend()
+    
+    # Set reasonable axis limits
+    plt.xlim(0.89, 1.01)
+    if not delta:
+        plt.ylim(0.7, 1.01)
+    
+    plt.tight_layout()
+    
+    # Save as SVG if path is provided
+    if save_path:
+        plt.savefig(save_path, format='svg')
+    
+    # Print the slopes for easy reference
+    print("Linear fit results:")
+    for protocol, results in fit_results.items():
+        print(f"{protocol}: slope = {results['slope']:.4f}, R² = {results['r_squared']:.4f}")
+    
+    return fit_results
 # todo: maybe 3d barplot or something
 
 # todo: fits for 1d plots?
